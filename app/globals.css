@@ -144,21 +144,10 @@ pre {
 }
 
 /* The mark is monochrome and loaded as an external image, so its
-   `currentColor` cannot inherit the header text color. */
-.dark .brand img {
+   `currentColor` cannot inherit the surrounding text color. */
+.dark .app-footer img {
   filter: invert(1);
   opacity: 0.9;
-}
-
-.brand .divider {
-  width: 1px;
-  height: 16px;
-  background: rgb(var(--border-primary));
-}
-
-.brand .product {
-  color: rgb(var(--text-secondary));
-  font-weight: 500;
 }
 
 .nav-link {
@@ -186,7 +175,21 @@ pre {
 main {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 28px 20px 64px;
+  padding: 28px 20px 40px;
+}
+
+.app-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 20px 32px;
+  color: rgb(var(--text-tertiary));
+  font-size: 12px;
+}
+
+.app-footer img {
+  opacity: 0.7;
 }
 
 .page-head {
