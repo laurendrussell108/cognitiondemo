@@ -89,19 +89,26 @@ export function FlagForm({
           }
         />
       </label>
-      <label className="row">
-        <input
-          type="checkbox"
-          style={{ width: "auto" }}
-          checked={values.enabled}
-          onChange={(e) => setValues({ ...values, enabled: e.target.checked })}
+      <div className="row" style={{ marginBottom: 20 }}>
+        <button
+          type="button"
+          className="switch"
+          data-on={values.enabled}
+          aria-pressed={values.enabled}
+          aria-label="Enabled"
+          onClick={() => setValues({ ...values, enabled: !values.enabled })}
         />
-        <span style={{ margin: 0 }}>Enabled</span>
-      </label>
+        <span>Enabled</span>
+      </div>
       {error && <p className="error">{error}</p>}
-      <button className="primary" type="submit" disabled={pending}>
-        {flagId ? "Save changes" : "Create flag"}
-      </button>
+      <div className="row">
+        <button className="primary" type="submit" disabled={pending}>
+          {flagId ? "Save changes" : "Create flag"}
+        </button>
+        <button type="button" className="ghost" onClick={() => router.push("/flags")}>
+          Cancel
+        </button>
+      </div>
     </form>
   );
 }

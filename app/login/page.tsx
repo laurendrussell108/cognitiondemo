@@ -9,11 +9,14 @@ export default async function LoginPage() {
   const users = await provider.listSelectableUsers();
 
   return (
-    <div className="card" style={{ maxWidth: 480 }}>
-      <h1>Sign in</h1>
-      <p className="muted">
-        Auth provider: <span className="badge">{provider.name}</span>
-      </p>
+    <div className="card" style={{ maxWidth: 440, margin: "48px auto" }}>
+      <div className="stack" style={{ marginBottom: 20 }}>
+        <h1>Sign in</h1>
+        <span className="subtle">
+          Mock identities for local development. Auth provider:{" "}
+          <span className="badge mono">{provider.name}</span>
+        </span>
+      </div>
       {users.length > 0 ? (
         <LoginForm users={users} />
       ) : (

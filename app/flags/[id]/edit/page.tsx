@@ -14,7 +14,9 @@ export default async function EditFlagPage({
 
   return (
     <>
-      <h1>Edit {flag.name}</h1>
+      <div className="page-head">
+        <h1>Edit {flag.name}</h1>
+      </div>
       <FlagForm
         flagId={flag.id}
         initial={{

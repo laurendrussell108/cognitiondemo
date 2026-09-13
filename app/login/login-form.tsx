@@ -29,17 +29,20 @@ export function LoginForm({ users }: { users: AuthUser[] }) {
   return (
     <>
       {users.map((user) => (
-        <div key={user.subject} className="row" style={{ marginBottom: 8 }}>
-          <button
-            className="primary"
-            disabled={pending !== null}
-            onClick={() => signIn(user.subject)}
-          >
-            Sign in as {user.name}
-          </button>
-          <span className="muted">{user.email}</span>
-          <span className="badge">{user.role}</span>
-        </div>
+        <button
+          key={user.subject}
+          className="row"
+          style={{ width: "100%", marginBottom: 8, padding: 12, textAlign: "left" }}
+          disabled={pending !== null}
+          onClick={() => signIn(user.subject)}
+        >
+          <span className="stack">
+            <strong>{user.name}</strong>
+            <span className="subtle">{user.email}</span>
+          </span>
+          <span className="spacer" />
+          <span className={user.role === "admin" ? "badge green" : "badge"}>{user.role}</span>
+        </button>
       ))}
       {error && <p className="error">{error}</p>}
     </>
