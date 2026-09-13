@@ -1,36 +1,163 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Internal Tools Foundation
 
-## Getting Started
+A starter kit for internal tools — **auth, role-based access control, and audit
+logging** — with a feature-flag admin panel built on top of it as the reference
+application.
 
-First, run the development server:
+The feature-flag panel is the least important part of this repo. It exists to
+prove the three foundation modules actually get used by a real feature rather
+than sitting unused next to it.
+
+## What this demonstrates
+
+A low-code platform gives you an identity layer, a permission model, and an
+audit trail for free. This repo is a timeboxed prototype of what it costs to own
+those three things yourself, and what they look like when they are built to be
+copied into the next ten tools instead of one.
+
+| Layer | Lives in | Designed so that |
+| --- | --- | --- |
+| Auth | `lib/auth/` | The identity provider is a config value. Callers depend on an `AuthProvider` interface and a session cookie, never on the provider. |
+| RBAC | `lib/rbac/` | Permissions are `resource:action` pairs in one policy file. A new resource is a policy entry, not new enforcement code. |
+| Audit | `lib/audit/` | A write and its audit row commit in the same transaction, so no feature can log inconsistently or forget to log. |
+
+Design decisions worth calling out:
+
+- **Enforcement is server-side only.** `withAuthorization` wraps every API
+  route handler. The UI hides buttons a viewer cannot use, but hiding them is
+  cosmetic — a viewer calling the API directly gets a 403, and the tests assert
+  that (`tests/rbac.test.ts`).
+- **The audit log is append-only in the database.** A Postgres trigger
+  (`prisma/migrations/*_audit_log_immutable`) rejects `UPDATE` and `DELETE` on
+  `audit_log`. Immutability enforced by convention is not immutability.
+- **Writes and their audit rows share a transaction.** `withAudit` opens one
+  transaction around the mutation and the log write, so a committed change
+  always has its log entry and a rejected change leaves nothing behind.
+- **Dependencies are deliberately boring.** Next.js, Prisma, and `jose` for
+  signing the session cookie. No auth framework, no UI kit, no state library —
+  a generalist engineer should be able to read all of `lib/` in one sitting.
+
+## Setup
+
+Requires Node 20+ and Docker.
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+cp .env.example .env
+docker compose up -d        # Postgres on localhost:5432
+npm install
+npm run db:migrate          # apply migrations (creates schema + audit trigger)
+npm run db:seed             # 3 users, 3 example flags
+npm run dev                 # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Sign in at `/login` by picking one of the seeded users:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| User | Role | Can |
+| --- | --- | --- |
+| amina.admin@example.com | admin | read + create/edit/toggle/delete |
+| viktor.viewer@example.com | viewer | read only |
+| priya.viewer@example.com | viewer | read only |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Other commands:
 
-## Learn More
+```bash
+npm test        # RBAC enforcement + audit-log correctness (needs Postgres running)
+npm run lint
+npm run typecheck
+npm run build
+```
 
-To learn more about Next.js, take a look at the following resources:
+## Layout
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```
+lib/auth/          Foundation — session + swappable identity provider
+  types.ts           AuthProvider / AuthUser interfaces (the seam)
+  session.ts         Signed JWT session cookie, getCurrentUser()
+  index.ts           getAuthProvider(), reads AUTH_PROVIDER
+  providers/mock.ts  Seeded users, no passwords — local development only
+  providers/oidc.ts  Shape of a real Okta/Entra provider (not implemented)
+lib/rbac/          Foundation — authorization
+  policy.ts          Roles and the resource:action permission matrix
+  guard.ts           withAuthorization() wrapper for API route handlers
+  server.ts          requireUser()/requirePermission() for server components
+lib/audit/         Foundation — audit logging
+  index.ts           recordAudit(), withAudit(), listAuditLogs()
+lib/db.ts          Prisma client singleton
+lib/feature-flags/ Reference app logic (not foundation)
+app/api/flags/     Reference app API routes
+app/flags/         Reference app UI
+app/audit/         Read-only audit log view, filterable by resource
+app/login/         Login screen driven by the configured auth provider
+prisma/            Schema, migrations (incl. audit immutability), seed
+tests/             RBAC enforcement and audit correctness tests
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### How a write flows
 
-## Deploy on Vercel
+`PATCH /api/flags/:id` →
+`withAuthorization("feature_flag", "update", …)` (401/403 here) →
+`updateFlag()` →
+`withAudit()` opens a transaction → reads the old row, writes the new row,
+inserts the audit row → commit.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+A future tool's write looks identical with different strings.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Reusability
+
+**Copy these into the next internal tool as-is:**
+
+| File | Why |
+| --- | --- |
+| `lib/auth/` (whole directory) | Provider-agnostic. Swap the provider, keep the callers. |
+| `lib/rbac/policy.ts` | Edit the `POLICY` map for the new tool's roles/resources; the matching logic stays. |
+| `lib/rbac/guard.ts` | Resource-agnostic; takes the resource name as an argument. |
+| `lib/rbac/server.ts` | Page-level guards; only the fallback redirect path is app-specific. |
+| `lib/audit/index.ts` | Resource-agnostic. |
+| `lib/db.ts` | Standard Prisma singleton. |
+| `prisma/schema.prisma` — `User` and `AuditLog` models | The foundation tables. |
+| `prisma/migrations/*_audit_log_immutable` | The append-only trigger. |
+| `app/api/auth/*`, `app/login/*` | Login plumbing; only the copy is cosmetic. |
+| `app/audit/page.tsx` | Generic log viewer; filters by resource type, not by flag. |
+| `tests/setup.ts`, `tests/helpers.ts` | Harness for testing guarded route handlers. |
+
+**Do NOT reuse as-is — feature-flag specific:**
+
+| File | Note |
+| --- | --- |
+| `lib/feature-flags/service.ts` | Flag domain logic. Use it as the *template* for a new service: every write goes through `withAudit`, never `prisma` directly. |
+| `app/api/flags/**` | Flag endpoints. The pattern to copy is `export const POST = withAuthorization(RESOURCE, "create", handler)`. |
+| `app/flags/**` | Flag UI. |
+| `prisma/schema.prisma` — `FeatureFlag` model | Flag table. |
+| `prisma/seed.ts` — `FLAGS` | Flag fixtures. Keep the `USERS` half. |
+| `tests/*.test.ts` | Written against flags; the structure (viewer gets 403, one accurate audit row per write) transfers. |
+
+**When adding a resource to a new tool**, the whole authorization change is one
+line in `lib/rbac/policy.ts`'s `POLICY` map (or nothing at all — `admin` holds
+`*:*` and `viewer` holds `*:read`, so a new resource inherits sane defaults),
+plus wrapping each route in `withAuthorization`.
+
+### Swapping the auth provider
+
+`AUTH_PROVIDER` selects the provider in `lib/auth/index.ts`. Adding real Okta or
+Entra means implementing `lib/auth/providers/oidc.ts` against the existing
+`AuthProvider` interface — build the authorize URL, exchange the code for an
+id token, verify it, upsert the user by the `sub` claim, and map an IdP group
+claim onto a `Role`. The session cookie, the guards, the routes, and the UI are
+unchanged; `providers/mock.ts` stays for local development and tests.
+
+## Non-goals / next steps
+
+Deliberately not built in this prototype:
+
+- **Real SSO (Okta/Entra).** The provider seam and a stub exist; the OIDC
+  handshake does not.
+- **Multi-tenant or per-team environment isolation.** Every signed-in user sees
+  every flag in every environment.
+- **CI/CD and deployment infrastructure.** Local Docker Compose only.
+- **Row-level permissions.** Authorization is role-level
+  (`resource:action`); it cannot yet express "this team's flags only". The
+  policy signature is the place that would grow a subject/record argument.
+
+Also worth doing before this becomes a real platform: session revocation
+(the JWT is valid until it expires), audit-log retention and export, and a
+shared UI component library so ten tools do not each invent their own table.

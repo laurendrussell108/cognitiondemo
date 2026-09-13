@@ -1,0 +1,56 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// Local mirror of identity-provider users. With a real IdP this table stores
+/// the subject claim and the role, and stops being the source of truth for
+/// credentials.
+model User {
+  id        String   @id @default(uuid())
+  subject   String   @unique
+  email     String   @unique
+  name      String
+  role      String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("users")
+}
+
+/// Append-only. Writes go through lib/audit; updates and deletes are rejected
+/// by a database trigger (see the audit_log_immutable migration).
+model AuditLog {
+  id           String   @id @default(uuid())
+  actorId      String   @map("actor_id")
+  actorEmail   String   @map("actor_email")
+  action       String
+  resourceType String   @map("resource_type")
+  resourceId   String   @map("resource_id")
+  oldValue     Json?    @map("old_value")
+  newValue     Json?    @map("new_value")
+  createdAt    DateTime @default(now()) @map("timestamp")
+
+  @@index([resourceType, resourceId])
+  @@index([createdAt])
+  @@map("audit_log")
+}
+
+/// Reference-app table. Feature-flag specific: not part of the foundation.
+model FeatureFlag {
+  id                String   @id @default(uuid())
+  name              String
+  description       String   @default("")
+  enabled           Boolean  @default(false)
+  rolloutPercentage Int      @default(0) @map("rollout_percentage")
+  environment       String
+  createdBy         String   @map("created_by")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  @@unique([name, environment])
+  @@map("feature_flags")
+}
