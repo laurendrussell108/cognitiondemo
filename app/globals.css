@@ -9,8 +9,8 @@
   --bg-wash: 248 248 248;
   --bg-elevated: 255 255 255;
   --text-primary: 25 25 25;
-  --text-secondary: 25 25 25 / 0.56;
-  --text-tertiary: 25 25 25 / 0.4;
+  --text-secondary: 25 25 25 / 0.72;
+  --text-tertiary: 25 25 25 / 0.64;
   --text-inverse: 255 255 255;
   --border-primary: 0 0 0 / 0.08;
   --border-secondary: 0 0 0 / 0.06;
@@ -26,6 +26,11 @@
   --tint-red: 245 59 58 / 0.12;
   --text-orange: 245 142 58;
   --tint-orange: 245 142 58 / 0.12;
+  /* Badge text sits on a tinted chip, so it needs more contrast than the
+     decorative state colors above. */
+  --badge-green: 0 105 55;
+  --badge-orange: 150 75 0;
+  --badge-red: 193 32 32;
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
   --shadow-md: 0 1px 3px 0 rgb(0 0 0 / 0.06), 0 1px 2px 0 rgb(0 0 0 / 0.06);
   color-scheme: light;
@@ -36,8 +41,8 @@
   --bg-wash: 25 25 25;
   --bg-elevated: 31 31 31;
   --text-primary: 255 255 255 / 0.9;
-  --text-secondary: 255 255 255 / 0.52;
-  --text-tertiary: 255 255 255 / 0.4;
+  --text-secondary: 255 255 255 / 0.66;
+  --text-tertiary: 255 255 255 / 0.6;
   --text-inverse: 0 0 0;
   --border-primary: 255 255 255 / 0.08;
   --border-secondary: 255 255 255 / 0.04;
@@ -53,6 +58,9 @@
   --tint-red: 245 59 58 / 0.16;
   --text-orange: 245 142 58;
   --tint-orange: 245 142 58 / 0.12;
+  --badge-green: 0 236 126;
+  --badge-orange: 245 142 58;
+  --badge-red: 255 120 116;
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.2);
   --shadow-md: 0 1px 3px 0 rgb(0 0 0 / 0.25), 0 1px 2px 0 rgb(0 0 0 / 0.2);
   color-scheme: dark;
@@ -133,6 +141,13 @@ pre {
 
 .brand:hover {
   text-decoration: none;
+}
+
+/* The mark is monochrome and loaded as an external image, so its
+   `currentColor` cannot inherit the header text color. */
+.dark .brand img {
+  filter: invert(1);
+  opacity: 0.9;
 }
 
 .brand .divider {
@@ -412,17 +427,17 @@ label > span {
 
 .badge.green {
   background: rgb(var(--tint-green));
-  color: rgb(var(--text-green));
+  color: rgb(var(--badge-green));
 }
 
 .badge.orange {
   background: rgb(var(--tint-orange));
-  color: rgb(var(--text-orange));
+  color: rgb(var(--badge-orange));
 }
 
 .badge.red {
   background: rgb(var(--tint-red));
-  color: rgb(var(--text-red));
+  color: rgb(var(--badge-red));
 }
 
 .badge.mono {
@@ -459,7 +474,7 @@ label > span {
 }
 
 .error {
-  color: rgb(var(--text-red));
+  color: rgb(var(--badge-red));
 }
 
 .json {
@@ -470,15 +485,15 @@ label > span {
   border-radius: 6px;
   background: rgb(var(--bg-wash));
   border: 1px solid rgb(var(--border-secondary));
-  color: rgb(var(--text-secondary));
+  color: rgb(var(--text-primary));
   white-space: pre-wrap;
   word-break: break-word;
 }
 
 .json .added {
-  color: rgb(var(--text-green));
+  color: rgb(var(--badge-green));
 }
 
 .json .removed {
-  color: rgb(var(--text-red));
+  color: rgb(var(--badge-red));
 }
