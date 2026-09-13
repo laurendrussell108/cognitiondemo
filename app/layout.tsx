@@ -25,13 +25,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <body>
         <header className="app-header">
           <Link className="brand" href="/flags">
-            <Image src="/cognition-mark.svg" alt="Cognition" width={20} height={20} priority />
-            <span>Cognition</span>
-            <span className="divider" />
-            <span className="product">Internal Tools</span>
+            Internal Tools
           </Link>
           <nav className="row">
             <NavLink href="/flags">Feature flags</NavLink>
+            <NavLink href="/demo">Flag effect</NavLink>
             <NavLink href="/audit">Audit log</NavLink>
           </nav>
           <span className="spacer" />
@@ -51,6 +49,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           )}
         </header>
         <main>{children}</main>
+        <footer className="app-footer">
+          <Image src="/cognition-mark.svg" alt="" width={14} height={14} />
+          <span>Built by Devin</span>
+        </footer>
       </body>
     </html>
   );
