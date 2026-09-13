@@ -6,7 +6,9 @@ export default async function NewFlagPage() {
   await requirePermission(RESOURCE, "create");
   return (
     <>
-      <h1>New feature flag</h1>
+      <div className="page-head">
+        <h1>New feature flag</h1>
+      </div>
       <FlagForm
         initial={{
           name: "",

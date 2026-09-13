@@ -119,6 +119,7 @@ A future tool's write looks identical with different strings.
 | `app/api/auth/*`, `app/login/*` | Login plumbing; only the copy is cosmetic. |
 | `app/audit/page.tsx` | Generic log viewer; filters by resource type, not by flag. |
 | `tests/setup.ts`, `tests/helpers.ts` | Harness for testing guarded route handlers. |
+| `app/globals.css`, `app/_components/theme-toggle.tsx`, `app/_components/nav-link.tsx`, `public/cognition-mark.svg` | Shared shell: Cognition-styled design tokens, light/dark theming, nav. |
 
 **Do NOT reuse as-is — feature-flag specific:**
 
@@ -135,6 +136,15 @@ A future tool's write looks identical with different strings.
 line in `lib/rbac/policy.ts`'s `POLICY` map (or nothing at all — `admin` holds
 `*:*` and `viewer` holds `*:read`, so a new resource inherits sane defaults),
 plus wrapping each route in `withAuthorization`.
+
+### Theming
+
+`app/globals.css` holds the palette as CSS variables under a `.light` and a
+`.dark` class, matching the Cognition/Devin surface tokens. The theme class is
+set on `<html>` before hydration by the inline script in `app/layout.tsx`
+(system preference by default, overridden by `localStorage.itf_theme`) and
+flipped by `ThemeToggle`. New components should consume `rgb(var(--token))`
+rather than literal colors so both themes stay consistent.
 
 ### Swapping the auth provider
 

@@ -35,17 +35,27 @@ export function FlagRowActions({
   }
 
   return (
-    <div className="row">
-      <Link href={`/audit?resourceId=${id}`}>History</Link>
+    <div className="row" style={{ justifyContent: "flex-end" }}>
+      {error && <span className="error subtle">{error}</span>}
+      <Link className="nav-link" href={`/audit?resourceId=${id}`}>
+        History
+      </Link>
       {canWrite && (
         <>
-          <Link href={`/flags/${id}/edit`}>Edit</Link>
-          <button onClick={toggle} disabled={pending}>
-            {enabled ? "Disable" : "Enable"}
-          </button>
+          <Link className="nav-link" href={`/flags/${id}/edit`}>
+            Edit
+          </Link>
+          <button
+            className="switch"
+            data-on={enabled}
+            onClick={toggle}
+            disabled={pending}
+            aria-pressed={enabled}
+            title={enabled ? "Disable flag" : "Enable flag"}
+            aria-label={enabled ? "Disable flag" : "Enable flag"}
+          />
         </>
       )}
-      {error && <span className="error">{error}</span>}
     </div>
   );
 }
