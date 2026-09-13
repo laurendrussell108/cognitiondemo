@@ -32,6 +32,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           </Link>
           <nav className="row">
             <NavLink href="/flags">Feature flags</NavLink>
+            <NavLink href="/demo">Flag effect</NavLink>
             <NavLink href="/audit">Audit log</NavLink>
           </nav>
           <span className="spacer" />

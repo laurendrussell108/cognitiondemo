@@ -84,8 +84,12 @@ lib/audit/         Foundation — audit logging
   index.ts           recordAudit(), withAudit(), listAuditLogs()
 lib/db.ts          Prisma client singleton
 lib/feature-flags/ Reference app logic (not foundation)
-app/api/flags/     Reference app API routes
+  service.ts         Flag CRUD; every write goes through withAudit()
+  evaluation.ts      Read side: evaluate()/isEnabled() with sticky rollout buckets
+  propagation.ts     Stub: publishFlagChange(), the cache-invalidation seam
+app/api/flags/     Reference app API routes (incl. /evaluate for services)
 app/flags/         Reference app UI
+app/demo/          "Flag effect" page: what a consumer sees for the selected flag
 app/audit/         Read-only audit log view, filterable by resource
 app/login/         Login screen driven by the configured auth provider
 prisma/            Schema, migrations (incl. audit immutability), seed
@@ -127,7 +131,8 @@ A future tool's write looks identical with different strings.
 | --- | --- |
 | `lib/feature-flags/service.ts` | Flag domain logic. Use it as the *template* for a new service: every write goes through `withAudit`, never `prisma` directly. |
 | `app/api/flags/**` | Flag endpoints. The pattern to copy is `export const POST = withAuthorization(RESOURCE, "create", handler)`. |
-| `app/flags/**` | Flag UI. |
+| `app/flags/**`, `app/demo/page.tsx` | Flag UI and the evaluation demo. |
+| `lib/feature-flags/evaluation.ts`, `lib/feature-flags/propagation.ts` | Flag read/propagation stubs. The *shape* (pure evaluation + post-commit publish) transfers; the rollout maths does not. |
 | `prisma/schema.prisma` — `FeatureFlag` model | Flag table. |
 | `prisma/seed.ts` — `FLAGS` | Flag fixtures. Keep the `USERS` half. |
 | `tests/*.test.ts` | Written against flags; the structure (viewer gets 403, one accurate audit row per write) transfers. |
@@ -136,6 +141,45 @@ A future tool's write looks identical with different strings.
 line in `lib/rbac/policy.ts`'s `POLICY` map (or nothing at all — `admin` holds
 `*:*` and `viewer` holds `*:read`, so a new resource inherits sane defaults),
 plus wrapping each route in `withAuthorization`.
+
+### Making a toggle change behavior
+
+Flipping the switch on `/flags` writes `enabled` through the RBAC guard and the
+audit helper, but a flag only matters once something *reads* it. That read path
+is stubbed here, split into the two pieces a real deployment needs:
+
+- **Evaluation** — `lib/feature-flags/evaluation.ts`. `evaluate(flag, { userKey })`
+  is a pure function: off if the flag is missing or disabled, otherwise on when
+  `bucketOf(name, userKey) < rolloutPercentage`. The bucket is an FNV-1a hash, so
+  a subject stays on the same side of a partial rollout across requests and
+  processes, and raising the percentage only ever adds subjects. `/demo` renders
+  this for the signed-in user plus sample accounts; `GET /api/flags/evaluate?name=&environment=&userKey=`
+  returns the same answer over HTTP.
+- **Propagation** — `lib/feature-flags/propagation.ts`. `publishFlagChange()` is
+  called after each write commits (never inside the audit transaction, so a
+  publish failure cannot lose a write or its audit row). Today it logs.
+
+To make this real:
+
+1. Implement `publishFlagChange()` to publish to Redis pub/sub, SNS, or a signed
+   webhook. Set `FLAG_PUBLISH_WEBHOOK_URL` once it does — the stub throws if that
+   variable is set, so a half-wired deployment fails loudly instead of silently
+   never propagating.
+2. Replace the body of `isEnabled()` with a read from an in-process snapshot of
+   all flags for the environment, refreshed on that event plus a periodic poll as
+   a backstop. `evaluate()` itself does not change — it never touches the
+   database, so it can be lifted into a client SDK unchanged.
+3. Authenticate services on `/api/flags/evaluate`. It currently authorizes with
+   the operator's session because the mock provider only issues human sessions;
+   a real deployment exchanges a machine token for a principal holding
+   `feature_flag:read`. The guard and `POLICY` do not change.
+4. Decide the failure mode explicitly: on a stale or unreachable flag source,
+   serving the last known snapshot is usually right, and `evaluate(null, …)`
+   already fails closed for an unknown flag.
+
+Not addressed by the stub: kill-switch latency targets, per-request targeting
+rules beyond percentage rollout (plan, country, account tier), and client-side
+evaluation for browsers.
 
 ### Theming
 
@@ -164,6 +208,9 @@ Deliberately not built in this prototype:
 - **Multi-tenant or per-team environment isolation.** Every signed-in user sees
   every flag in every environment.
 - **CI/CD and deployment infrastructure.** Local Docker Compose only.
+- **A real flag read path.** Evaluation and propagation exist as stubs with a
+  documented wiring plan (see "Making a toggle change behavior"); no service
+  consumes them and nothing is cached.
 - **Row-level permissions.** Authorization is role-level
   (`resource:action`); it cannot yet express "this team's flags only". The
   policy signature is the place that would grow a subject/record argument.

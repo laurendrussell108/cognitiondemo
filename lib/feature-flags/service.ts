@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { withAudit } from "@/lib/audit";
+import { publishFlagChange } from "@/lib/feature-flags/propagation";
 import type { AuthUser } from "@/lib/auth/types";
 
 /**
@@ -35,8 +36,8 @@ export function getFlag(id: string) {
   return prisma.featureFlag.findUnique({ where: { id } });
 }
 
-export function createFlag(actor: AuthUser, input: FlagInput) {
-  return withAudit(
+export async function createFlag(actor: AuthUser, input: FlagInput) {
+  const created = await withAudit(
     { actor, action: "feature_flag.create", resourceType: RESOURCE },
     async (tx) => {
       const created = await tx.featureFlag.create({
@@ -45,10 +46,12 @@ export function createFlag(actor: AuthUser, input: FlagInput) {
       return { resourceId: created.id, newValue: created, result: created };
     },
   );
+  await publishFlagChange({ type: "created", flag: created });
+  return created;
 }
 
-export function updateFlag(actor: AuthUser, id: string, input: Partial<FlagInput>) {
-  return withAudit(
+export async function updateFlag(actor: AuthUser, id: string, input: Partial<FlagInput>) {
+  const updated = await withAudit(
     { actor, action: "feature_flag.update", resourceType: RESOURCE },
     async (tx) => {
       const before = await tx.featureFlag.findUniqueOrThrow({ where: { id } });
@@ -56,10 +59,12 @@ export function updateFlag(actor: AuthUser, id: string, input: Partial<FlagInput
       return { resourceId: id, oldValue: before, newValue: after, result: after };
     },
   );
+  await publishFlagChange({ type: "updated", flag: updated });
+  return updated;
 }
 
-export function deleteFlag(actor: AuthUser, id: string) {
-  return withAudit(
+export async function deleteFlag(actor: AuthUser, id: string) {
+  const deleted = await withAudit(
     { actor, action: "feature_flag.delete", resourceType: RESOURCE },
     async (tx) => {
       const before = await tx.featureFlag.findUniqueOrThrow({ where: { id } });
@@ -67,4 +72,6 @@ export function deleteFlag(actor: AuthUser, id: string) {
       return { resourceId: id, oldValue: before, result: before };
     },
   );
+  await publishFlagChange({ type: "deleted", flag: deleted });
+  return deleted;
 }
