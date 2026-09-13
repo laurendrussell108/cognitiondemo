@@ -4,9 +4,9 @@ const prisma = new PrismaClient();
 
 /** Stand-ins for IdP accounts while AUTH_PROVIDER=mock. */
 const USERS = [
-  { subject: "mock|amina", email: "amina.admin@example.com", name: "Amina Osei", role: "admin" },
-  { subject: "mock|viktor", email: "viktor.viewer@example.com", name: "Viktor Lang", role: "viewer" },
-  { subject: "mock|priya", email: "priya.viewer@example.com", name: "Priya Nair", role: "viewer" },
+  { subject: "mock|venus", email: "venus.admin@example.com", name: "Venus", role: "admin" },
+  { subject: "mock|lauren", email: "lauren.viewer@example.com", name: "Lauren", role: "viewer" },
+  { subject: "mock|sara", email: "sara.viewer@example.com", name: "Sara", role: "viewer" },
 ];
 
 const FLAGS = [

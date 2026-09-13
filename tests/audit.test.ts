@@ -20,8 +20,8 @@ async function logsForFlag(id: string) {
 }
 
 beforeAll(async () => {
-  admin = await loadUser("amina.admin@example.com");
-  viewer = await loadUser("viktor.viewer@example.com");
+  admin = await loadUser("venus.admin@example.com");
+  viewer = await loadUser("lauren.viewer@example.com");
 });
 
 beforeEach(async () => {

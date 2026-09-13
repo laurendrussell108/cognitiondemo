@@ -54,9 +54,9 @@ Sign in at `/login` by picking one of the seeded users:
 
 | User | Role | Can |
 | --- | --- | --- |
-| amina.admin@example.com | admin | read + create/edit/toggle/delete |
-| viktor.viewer@example.com | viewer | read only |
-| priya.viewer@example.com | viewer | read only |
+| venus.admin@example.com | admin | read + create/edit/toggle/delete |
+| lauren.viewer@example.com | viewer | read only |
+| sara.viewer@example.com | viewer | read only |
 
 Other commands:
 
