@@ -37,6 +37,62 @@ Design decisions worth calling out:
   signing the session cookie. No auth framework, no UI kit, no state library —
   a generalist engineer should be able to read all of `lib/` in one sitting.
 
+## Replacing Power Apps: what maps to what
+
+This prototype exists to answer a build-vs-buy question: if a fintech team with
+its own engineers builds ten internal tools instead of licensing a low-code
+platform, what do they have to own? Power Apps' value is not the drag-and-drop
+canvas — it is the platform underneath it, so that is what this repo replicates.
+
+| What Power Apps gives you | Here | Status |
+| --- | --- | --- |
+| Identity / SSO | `lib/auth/` — `AuthProvider` interface + signed session cookie; `AUTH_PROVIDER` picks the implementation | Seam built, mock provider only. Real Okta/Entra is `providers/oidc.ts`. |
+| Security roles | `lib/rbac/` — `resource:action` policy matrix enforced server-side on every route | Built, role-level only (no row-level rules) |
+| Dataverse auditing | `lib/audit/` — write and audit row in one transaction, append-only via a Postgres trigger | Built |
+| Dataverse data layer | Postgres + Prisma: migrations, relations, typed access | Built, but you own the schema, backups and capacity |
+| Governance UI for security | `/audit` — read-only, filterable log | Partial. Power Apps also shows who built and shared what; here that lives in Git history and PR review. |
+| Connectors | Ordinary HTTP clients in application code | Not replicated. See below. |
+| Managed hosting and ops | Nothing — Docker Compose locally | Not replicated. This is the real recurring cost of building. |
+| Non-engineer app building | Nothing | Not replicated, and deliberately so — this assumes engineers build the tools. |
+
+Two things worth being explicit about for a fintech team:
+
+- **Connectors cut both ways.** Where a certified connector exists (SQL, Stripe,
+  ServiceNow), Power Apps turns an integration into configuration and that is
+  real value. Where one does not — as of a September 2026 search of Microsoft's
+  connector reference, no certified connector existed for the major KYC/identity
+  vendors (Onfido, Jumio, Trulioo, Persona, Socure, Veriff) — the integration is
+  custom code on either platform, so the low-code option buys nothing there.
+- **An admin panel is not a flag platform.** Editing rows does not change how
+  services behave; something has to read and evaluate them. That read path is
+  the part low-code tools usually leave to you, and it is stubbed here under
+  "Making a toggle change behavior" so the missing pieces are visible rather
+  than implied.
+
+### Where Devin fits
+
+The economics of building only work if the foundation is built once and reused,
+and that is the part of this repo written to be copied (see [Reusability](#reusability)).
+This whole repo — auth, RBAC, audit, the reference app, tests and these docs —
+was built with Devin in a single session, then iterated on in later ones. The
+workflow that produced it is the one that scales to tool #2 through #10:
+
+1. Point Devin at this repo and describe the next tool's domain (tables,
+   screens, who may do what). The identity, permission and audit layers come
+   along unchanged — the prompt is about the domain, not about auth.
+2. Devin works in a sandbox with its own shell and browser: it writes the
+   migration, the service, the routes and the tests, runs them, and opens a PR.
+3. Your engineers review that PR exactly as they review any other. The output is
+   your code in your repo — nothing about the review bar or the deployment path
+   changes, which is what makes this auditable for a regulated environment.
+4. Because the layers are shared, a security fix to `lib/rbac/` or `lib/audit/`
+   lands once for every tool instead of ten times.
+
+What Devin does not remove: hosting, patching, backups, on-call, security review
+and the decision of what "done" means. Building is cheaper per tool than it
+looks; owning the platform is not free.
+
+
 ## Setup
 
 Requires Node 20+ and Docker.
